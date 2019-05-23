@@ -1,0 +1,1671 @@
+#Plot size params
+#png
+plot_res = 500
+plot_pointsize = 3
+plot_width = 1920
+plot_height = 1080
+plot_units = "px"
+#plot
+plot_cex = 1
+plot_cex_clus = 0.3
+plot_cex_main = 0.3
+plot_cex_txt = 0.3
+plot_cex_txt_clus = 0.2
+plot_cex_lab = 0.8
+plot_cex_axis = 0.3
+
+
+#data
+library(tidyverse)
+library(gridExtra)
+library(smacof)
+
+setwd("/Users/mlr/OneDrive - Victoria University of Wellington - STAFF/Git/tic-personality-words/outputs save/combined-allwords-dictionary-sentence-person-centric/")
+#setwd("/Users/mlr/OneDrive - Victoria University of Wellington - STAFF/Git/tic-personality-words/outputs save/random-from-book-1000words-all-words-person-centric/")
+
+## Creating a list with all co-ocurrence matrices for all outputs
+allmatrices <- list.files(paste0("."),
+                          pattern = "(.*)_network_matrix.csv",
+                          full.names = T)
+
+alllinks <- list.files(paste0("."),
+                       pattern = "(.*)_links.csv",
+                       full.names = T)
+
+allnodes <- list.files(paste0("."),
+                       pattern = "(.*)_nodes.csv",
+                       full.names = T)
+
+thresholds <- list(0,0.05,0.1,0.15,0.25,-0.8,-0.6,-0.4,-0.2)
+
+for(thresh in thresholds){
+  if (!file.exists(as.character(thresh))){
+    dir.create(as.character(thresh))
+  }
+  
+  ## Fetching the data of the co-ocurrence matrices
+  cooc <- lapply(allmatrices, function(x) read.table(x, header = T, check.names = F))
+  link <- lapply(alllinks, function(x) read.table(x, header = T, check.names = F,
+                                                  stringsAsFactors = F))
+  node <- lapply(allnodes, function(x) read.table(x, header = T, check.names = F,
+                                                  stringsAsFactors = F))
+  
+  for(bb in 1:length(cooc)){
+    rownames(cooc[[bb]]) <- cooc[[bb]][,1]
+    cooc[[bb]][,1] <- NULL
+    if(thresh > 0){
+      # rare co-occurring terms
+      rareT <- which(rowSums(cooc[[bb]]) <= ceiling(max(rowSums(cooc[[bb]])) * thresh))
+      # frequent co-occ terms
+      freqT <- which(rowSums(cooc[[bb]]) > ceiling(max(rowSums(cooc[[bb]])) * thresh))
+      # rare terms only co-occurring with rare terms
+      #finalRare <- which(colSums(cooc[[bb]][freqT,]) == 0)
+      if(length(rareT)>0){
+        cooc[[bb]] <- cooc[[bb]][-rareT,-rareT]
+      }
+    } else if(thresh < 0){
+      # rare co-occurring terms
+      rareT <- which(rowSums(cooc[[bb]]) <= ceiling(max(rowSums(cooc[[bb]])) * (-1 * thresh)))
+      # frequent co-occ terms
+      freqT <- which(rowSums(cooc[[bb]]) > ceiling(max(rowSums(cooc[[bb]])) * (-1 * thresh)))
+      # rare terms only co-occurring with rare terms
+      #finalRare <- which(colSums(cooc[[bb]][freqT,]) == 0)
+      if(length(rareT)>0){
+        cooc[[bb]] <- cooc[[bb]][rareT,rareT]
+      }
+    }
+  }
+  
+  
+  
+  index <- 0
+  for (sent in cooc) {
+    index <- index + 1
+    ## cluster text
+    #sent[lower.tri(sent)] <- 0
+    #Mydissimilarity_10values_r <- smacof::sim2diss(cor(cooc[[1]]), method = "rank", to.dist = T)
+    write.table(sent, paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_network_matrix.csv"),sep=" ")
+    test <- Rtsne::Rtsne(sent,check_duplicates=FALSE,
+                         pca=TRUE, perplexity = max(1,floor(nrow(sent)/3)-1), 
+                         theta=0, dims=2)
+    
+    corSent <- cor(sent)
+    
+    result = tryCatch({
+      loadings2 <- NULL
+      loadings2 <- psych::fa(corSent,nfactors = 2,fm="minres",rotate = "varimax")
+      write.table(loadings2$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-2factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings2 <- psych::fa(corSent,nfactors = 2,fm="minres",rotate = "varimax")
+      write.table(loadings2$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-2factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings2})
+    
+    result = tryCatch({
+      loadings3 <- NULL
+      loadings3 <- psych::fa(corSent,nfactors = 3,fm="minres",rotate = "varimax")
+      write.table(loadings3$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-3factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings3 <- psych::fa(corSent,nfactors = 3,fm="minres",rotate = "varimax")
+      write.table(loadings3$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-3factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings3})
+    
+    result = tryCatch({
+      loadings4 <- NULL
+      loadings4 <- psych::fa(corSent,nfactors = 4,fm="minres",rotate = "varimax")
+      write.table(loadings4$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-4factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings4 <- psych::fa(corSent,nfactors = 4,fm="minres",rotate = "varimax")
+      write.table(loadings4$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-4factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings4})  
+    
+    result = tryCatch({
+      loadings5 <- NULL
+      loadings5 <- psych::fa(corSent,nfactors = 5,fm="minres",rotate = "varimax")
+      write.table(loadings5$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-5factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings5 <- psych::fa(corSent,nfactors = 5,fm="minres",rotate = "varimax")
+      write.table(loadings5$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-5factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings5})  
+    
+    result = tryCatch({
+      loadings6 <- NULL
+      loadings6 <- psych::fa(corSent,nfactors = 6,fm="minres",rotate = "varimax")
+      write.table(loadings6$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-6factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings6 <- psych::fa(corSent,nfactors = 6,fm="minres",rotate = "varimax")
+      write.table(loadings6$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-6factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings6})
+    
+    result = tryCatch({
+      loadings7 <- NULL
+      loadings7 <- psych::fa(corSent,nfactors = 7,fm="minres",rotate = "varimax")
+      write.table(loadings7$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-7factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings7 <- psych::fa(corSent,nfactors = 7,fm="minres",rotate = "varimax")
+      write.table(loadings7$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-7factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={rm(loadings7)})
+    
+    #withkmeans
+    fit_cluster_kmeans <- fpc::kmeansruns(test$Y,krange=2:(nrow(sent)/2),critout=F,runs=5,criterion="ch")
+    write.csv2(data.frame(terms=rownames(sent),clusters=fit_cluster_kmeans$cluster),paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-TSNE-cluster.csv"), row.names = F, col.names = F, sep = ";")
+    #with dbscan
+    #ds <- dbscan::dbscan(scale(test$Y), 20)
+    #cc <- randomcoloR::distinctColorPalette(max(ds$cluster))
+    #sub_title <- "dbscan"
+    #plot(test$Y[,1], test$Y[,2], col=cc[ds$cluster], cex.axis = plot_cex_axis, cex=plot_cex, cex.lab=plot_cex_lab, cex.main = plot_cex_main, pch=20, main = paste0("DBSCAN"))
+    #text(x=test$Y[,1], y=test$Y[,2], cex=0.8, pos=4, labels=rownames(sent))
+    
+    # trait categories from pda500 coded file
+    curTerms <- as.data.frame(cbind(rownames(sent),fit_cluster_kmeans$cluster),stringsAsFactors = F)
+    
+    wordTrait <- read.table("../../resources/pda500-trait-matches.csv",sep=",",header = T)
+    wordTrait$Term<-tolower(wordTrait$Term)
+    
+    #distribution of traits when max value is used without threshold
+    #plyr::count(wordTrait$maxValTrait)
+    
+    matched <- wordTrait[which(wordTrait$Term %in% curTerms$V1),c(1,3)]
+    
+    curTerms$trait <- ""
+    curTerms[which(curTerms$V1 %in% matched$Term),3] <- as.character(matched[which(matched$Term %in% curTerms$V1),2])
+    
+    colnames(curTerms)<-c("term","cluster","trait")
+    
+    curTerms$trait[which(curTerms$trait=="")] <- "N.N."
+    
+    
+    
+    ### cur term with loading from 1710 mapping
+    
+    curTerms2 <- as.data.frame(cbind(rownames(sent),fit_cluster_kmeans$cluster),stringsAsFactors = F)
+    
+    wordTrait2 <- read.table("../../resources/pda1710_no_abbreviation_loadings_categories.csv",sep=",",header = T)
+    wordTrait2$Word<-tolower(wordTrait2$Word)
+    
+    #add the max trait variable without loading threshold
+    wordTrait2$maxValTrait <- ""
+    wordTrait2$thresholdValTrait <- ""
+    for(i in 1:nrow(wordTrait2)){
+      wordTrait2$maxValTrait[i] <- names(which.max(abs(wordTrait2[i,5:9])))
+      wordTrait2$thresholdValTrait[i] <- ifelse(length(which(abs(wordTrait2[i,5:9])>.25))>0,names(which.max(abs(wordTrait2[i,5:9]))),"")
+    }
+    
+    #distribution of traits when max value is used without threshold
+    #plyr::count(wordTrait2$maxValTrait)
+    
+    matched <- wordTrait2[which(wordTrait2$Word %in% curTerms2$V1),]
+    
+    curTerms2$trait <- ""
+    curTerms2[which(curTerms2$V1 %in% matched$Word),3] <- as.character(matched[which(matched$Word %in% curTerms2$V1),11])
+    
+    colnames(curTerms2)<-c("term","cluster","trait")
+    
+    curTerms2$trait[which(curTerms2$trait=="")] <- "N.N."
+    
+    
+    #plot kmeans
+    cc <- randomcoloR::distinctColorPalette(max(fit_cluster_kmeans$cluster))
+    png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_cluster_terms_2d.png"))
+    plot(test$Y[,1], test$Y[,2], col=cc[fit_cluster_kmeans$cluster], cex.axis = plot_cex_axis, cex=plot_cex, cex.lab=plot_cex_lab, cex.main = plot_cex_main, pch=20, main = paste0("2D TSNE"))
+    points(fit_cluster_kmeans$centers, col = cc, pch = 8, cex = 2)
+    #text(x=test$Y[,1], y=test$Y[,2], cex=0.8, pos=4, labels=rownames(sent))
+    text(x=test$Y[,1], y=test$Y[,2], cex=0.8, pos=4, labels=paste0(rownames(sent), " - ",curTerms[which(curTerms$term==rownames(sent)),3]))
+    text(x=fit_cluster_kmeans$centers[,1], y=fit_cluster_kmeans$centers[,2], cex=0.8, pos=2, labels=c(1:fit_cluster_kmeans$bestk))
+    dev.off()
+    
+    plData <- test
+    colnames(plData)<-c("V1","V2")
+    
+    ggplot(plData, aes_string(x = "V1", y = "V2", color = cc[fit_cluster_kmeans$cluster])) +
+      geom_point(size = 1) +
+      geom_label(paste0(rownames(sent), " - ",curTerms[which(curTerms$term==rownames(sent)),3])) +
+      #guides(colour=guide_legend(override.aes = list(size = 6))) +
+      xlab("") + ylab("") +
+      ggtitle("") +
+      theme_light(base_size=20)
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_cluster_terms_2d_ggplot.jpg"),plot=plo,device="jpeg")
+    
+    
+    #barplot
+    plo <- ggplot(plyr::count(curTerms,vars=cluster~trait), aes(x=cluster, y=freq, fill=trait)) +
+      geom_bar(stat="identity", colour="white") +
+      geom_text(aes(label=paste0(trait,"-",freq)),position=position_stack(vjust=0.5), colour="white",size = 3) +
+      ggtitle(gsub("\\_links\\.csv","",alllinks[[index]])) + 
+      coord_flip()
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_cluster_traits.jpg"),plot=plo,device="jpeg")
+    
+    
+    # without NN labels
+    plo <- ggplot(plyr::count(curTerms[which(curTerms$trait!="N.N."),],vars=cluster~trait), aes(x=cluster, y=freq, fill=trait)) +
+      geom_bar(stat="identity", colour="white") +
+      geom_text(aes(label=paste0(trait,"-",freq)),position=position_stack(vjust=0.5), colour="white",size = 3) +
+      ggtitle(gsub("\\_links\\.csv","",alllinks[[index]])) + 
+      coord_flip()
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_cluster_traits_noNN.jpg"),plot=plo,device="jpeg")
+    
+    # without unmatched loadings and without NN
+    plo <- ggplot(plyr::count(curTerms[which(curTerms$trait!="N.N." & curTerms$trait!="-"),],vars=cluster~trait), aes(x=cluster, y=freq, fill=trait)) +
+      geom_bar(stat="identity", colour="white") +
+      geom_text(aes(label=paste0(trait,"-",freq)),position=position_stack(vjust=0.5), colour="white",size = 3) +
+      ggtitle(gsub("\\_links\\.csv","",alllinks[[index]])) + 
+      coord_flip()
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_cluster_traits_nounmatched.jpg"),plot=plo,device="jpeg")
+    
+    
+    #traits per node
+    tA<-c(0)
+    tC<-c(0)
+    tE<-c(0)
+    tN<-c(0)
+    tO<-c(0)
+    tNN<-c(0)
+    
+    for(i in 1:nrow(node[[index]])){
+      nodeTraits <- as.data.frame(unlist(str_split(node[[index]][i,2],", ")),stringsAsFactors = F)
+      
+      if(node[[index]][i,2] != ""){
+        colnames(nodeTraits)<-c("words")
+        nodeTraits$trait <- ""
+        nodeTraits[which(nodeTraits$words %in% wordTrait$Term),2] <- as.character(wordTrait[which(wordTrait$Term %in% nodeTraits$words),3])
+        colnames(nodeTraits)<-c("word","trait")
+        nodeTraits$trait[which(nodeTraits$trait=="")] <- "N.N."
+      }
+      
+      cnt_tbl <- plyr::count(nodeTraits$trait)
+      
+      tA <- c(tA,ifelse(length(cnt_tbl[which(cnt_tbl$x=="A"),2]>0), tA[length(tA)] + cnt_tbl[which(cnt_tbl$x=="A"),2], tA[length(tA)]))
+      tC <- c(tC,ifelse(length(cnt_tbl[which(cnt_tbl$x=="C"),2]>0), tC[length(tC)] + cnt_tbl[which(cnt_tbl$x=="C"),2], tC[length(tC)]))
+      tE <- c(tE,ifelse(length(cnt_tbl[which(cnt_tbl$x=="E"),2]>0), tE[length(tE)] + cnt_tbl[which(cnt_tbl$x=="E"),2], tE[length(tE)]))
+      tN <- c(tN,ifelse(length(cnt_tbl[which(cnt_tbl$x=="N"),2]>0), tN[length(tN)] + cnt_tbl[which(cnt_tbl$x=="N"),2], tN[length(tN)]))
+      tO <- c(tO,ifelse(length(cnt_tbl[which(cnt_tbl$x=="O"),2]>0), tO[length(tO)] + cnt_tbl[which(cnt_tbl$x=="O"),2], tO[length(tO)]))
+      tNN <- c(tNN,ifelse(length(cnt_tbl[which(cnt_tbl$x=="N.N."),2]>0), tNN[length(tNN)] + cnt_tbl[which(cnt_tbl$x=="N.N."),2], tNN[length(tNN)]))
+      
+    }
+    tA <- as.data.frame(tA)
+    tC <- as.data.frame(tC)
+    tE <- as.data.frame(tE)
+    tN <- as.data.frame(tN)
+    tO <- as.data.frame(tO)
+    tNN <- as.data.frame(tNN)
+    
+    colnames(tA) <- c("vals")
+    tA$rws <- rownames(tA)
+    colnames(tC) <- c("vals")
+    tC$rws <- rownames(tC)
+    colnames(tE) <- c("vals")
+    tE$rws <- rownames(tE)
+    colnames(tN) <- c("vals")
+    tN$rws <- rownames(tN)
+    colnames(tO) <- c("vals")
+    tO$rws <- rownames(tO)
+    colnames(tNN) <- c("vals")
+    tNN$rws <- rownames(tNN)
+    
+    out <- list()
+    out["tA"] <- tA
+    out["tC"] <- tC
+    out["tE"] <- tE
+    out["tN"] <- tN
+    out["tO"] <- tO
+    #out["tNN"] <- tNN
+    
+    dat <- lapply(out, function(x) cbind(x = seq_along(x), y = x))
+    
+    list.names <- names(dat)
+    lns <- sapply(dat, nrow)
+    dat <- as.data.frame(do.call("rbind", dat))
+    dat$group <- rep(list.names, lns)
+    
+    plo <- ggplot(dat, aes(x = x, y = y, colour = group)) +
+      theme_bw() +
+      geom_line(linetype = "dotted") +
+      ggtitle(gsub("\\_links\\.csv","",alllinks[[index]]))
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_node_traits.jpg"),plot=plo,device="jpeg")
+    
+    
+    
+    
+    #traits per node
+    tA<-c(0)
+    tC<-c(0)
+    tE<-c(0)
+    tN<-c(0)
+    tO<-c(0)
+    tNN<-c(0)
+    
+    for(i in 1:nrow(node[[index]])){
+      nodeTraits <- as.data.frame(unlist(str_split(node[[index]][i,2],", ")),stringsAsFactors = F)
+      
+      if(node[[index]][i,2] != ""){
+        colnames(nodeTraits)<-c("words")
+        nodeTraits$trait <- ""
+        nodeTraits[which(nodeTraits$words %in% wordTrait2$Word),2] <- as.character(wordTrait2[which(wordTrait2$Word %in% nodeTraits$words),3])
+        colnames(nodeTraits)<-c("word","trait")
+        nodeTraits$trait[which(nodeTraits$trait=="")] <- "N.N."
+      }
+      
+      cnt_tbl <- plyr::count(nodeTraits$trait)
+      
+      tA <- c(tA,ifelse(length(cnt_tbl[which(cnt_tbl$x=="A"),2]>0), tA[length(tA)] + cnt_tbl[which(cnt_tbl$x=="A"),2], tA[length(tA)]))
+      tC <- c(tC,ifelse(length(cnt_tbl[which(cnt_tbl$x=="C"),2]>0), tC[length(tC)] + cnt_tbl[which(cnt_tbl$x=="C"),2], tC[length(tC)]))
+      tE <- c(tE,ifelse(length(cnt_tbl[which(cnt_tbl$x=="E"),2]>0), tE[length(tE)] + cnt_tbl[which(cnt_tbl$x=="E"),2], tE[length(tE)]))
+      tN <- c(tN,ifelse(length(cnt_tbl[which(cnt_tbl$x=="N"),2]>0), tN[length(tN)] + cnt_tbl[which(cnt_tbl$x=="N"),2], tN[length(tN)]))
+      tO <- c(tO,ifelse(length(cnt_tbl[which(cnt_tbl$x=="O"),2]>0), tO[length(tO)] + cnt_tbl[which(cnt_tbl$x=="O"),2], tO[length(tO)]))
+      tNN <- c(tNN,ifelse(length(cnt_tbl[which(cnt_tbl$x=="N.N."),2]>0), tNN[length(tNN)] + cnt_tbl[which(cnt_tbl$x=="N.N."),2], tNN[length(tNN)]))
+      
+    }
+    tA <- as.data.frame(tA)
+    tC <- as.data.frame(tC)
+    tE <- as.data.frame(tE)
+    tN <- as.data.frame(tN)
+    tO <- as.data.frame(tO)
+    tNN <- as.data.frame(tNN)
+    
+    colnames(tA) <- c("vals")
+    tA$rws <- rownames(tA)
+    colnames(tC) <- c("vals")
+    tC$rws <- rownames(tC)
+    colnames(tE) <- c("vals")
+    tE$rws <- rownames(tE)
+    colnames(tN) <- c("vals")
+    tN$rws <- rownames(tN)
+    colnames(tO) <- c("vals")
+    tO$rws <- rownames(tO)
+    colnames(tNN) <- c("vals")
+    tNN$rws <- rownames(tNN)
+    
+    out <- list()
+    out["tA"] <- tA
+    out["tC"] <- tC
+    out["tE"] <- tE
+    out["tN"] <- tN
+    out["tO"] <- tO
+    #out["tNN"] <- tNN
+    
+    dat <- lapply(out, function(x) cbind(x = seq_along(x), y = x))
+    
+    list.names <- names(dat)
+    lns <- sapply(dat, nrow)
+    dat <- as.data.frame(do.call("rbind", dat))
+    dat$group <- rep(list.names, lns)
+    
+    plo <- ggplot(dat, aes(x = x, y = y, colour = group)) +
+      theme_bw() +
+      geom_line(linetype = "dotted") +
+      ggtitle(gsub("\\_links\\.csv","",alllinks[[index]]))
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_node_traits_1710.jpg"),plot=plo,device="jpeg")
+    
+    
+    
+    
+    ###MDS on traits
+    if(thresh < 0.1){
+      sent[lower.tri(sent)] <- 0
+      
+      wordTrait <- read.table("../../resources/pda500-trait-matches.csv",sep=",",header = T)
+      wordTrait$Term<-tolower(wordTrait$Term)
+      
+      traitCo <- matrix(nrow=5,ncol=5,data = 0)
+      rownames(traitCo)<-c("A","C","E","N","O")
+      colnames(traitCo)<-c("A","C","E","N","O")
+      
+      for(i in 1:nrow(sent)){
+        for(j in 1:nrow(sent)){
+          rowTerm <- as.character(wordTrait$Primary[which(wordTrait$Term==rownames(sent)[i])][1])
+          colTerm <- as.character(wordTrait$Primary[which(wordTrait$Term==colnames(sent)[j])][1])
+          crossVal <- sent[i,j]
+          if(rowTerm!=colTerm & (!is.na(rowTerm) & !is.na(colTerm)) & (rowTerm != "-" & colTerm != "-")){
+            traitCo[rowTerm,colTerm] <- traitCo[rowTerm,colTerm] + crossVal
+            traitCo[colTerm,rowTerm] <- traitCo[colTerm,rowTerm] + crossVal
+          }
+        }
+      }
+      
+      corTraitCo <- cor(traitCo)
+      
+      Mydissimilarity_10values_r <- smacof::sim2diss(corTraitCo, method = "rank", to.dist = T)
+      MDS_ordinal_10values_r <- mds(Mydissimilarity_10values_r, type="ordinal")
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_shepard.png"))
+      plot(MDS_ordinal_10values_r, plot.type = "Shepard", main="Ordinal")
+      text(55,.02, paste("Stress =", round(MDS_ordinal_10values_r$stress,2)))
+      dev.off()
+      MDSmod_10values_r <- mds(Mydissimilarity_10values_r, ndim = 2, type = c("ordinal"))
+      MDSmod_10values_r$stress
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank.png"))
+      plot(MDSmod_10values_r, main = "1710 // Rank", xlab = "Dimension 1", ylab = "Dimension 2")
+      dev.off()
+      
+      Mydissimilarity_10values_c <- sim2diss(corTraitCo, method = "corr", to.dist = T)
+      MDS_ordinal_10values_c <- mds(Mydissimilarity_10values_c, type="ordinal")
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_shepard.png"))
+      plot(MDS_ordinal_10values_c, plot.type = "Shepard", main="Ordinal")
+      text(55,.02, paste("Stress =", round(MDS_ordinal_10values_c$stress,2)))
+      dev.off()
+      MDSmod_10values_c <- mds(Mydissimilarity_10values_c, ndim = 2, type = c("ordinal"))
+      MDSmod_10values_c$stress
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr.png"))
+      plot(MDSmod_10values_c, main = "1710 // Correlation", xlab = "Dimension 1", ylab = "Dimension 2")
+      dev.off()
+      
+      
+      
+      
+      ###MDS on traits randomized
+        traitCo <- matrix(nrow=5,ncol=5,data = 0)
+        rownames(traitCo)<-c("A","C","E","N","O")
+        colnames(traitCo)<-c("A","C","E","N","O")
+        baseTraits<-c("A","C","E","N","O")
+        traitCounts <- plyr::count(wordTrait$Primary)
+        traitCounts <- traitCounts[-which(traitCounts$x=="-"),]
+        traitProbs <- traitCounts$freq/sum(traitCounts$freq)
+        
+        for(i in 1:nrow(sent)){
+          for(j in 1:nrow(sent)){
+            rowTerm <- sample(baseTraits, 1)
+            colTerm <- sample(baseTraits, 1)
+            crossVal <- sent[i,j]
+            if(rowTerm!=colTerm & (!is.na(rowTerm) & !is.na(colTerm)) & (rowTerm != "-" & colTerm != "-")){
+              traitCo[rowTerm,colTerm] <- traitCo[rowTerm,colTerm] + crossVal
+              traitCo[colTerm,rowTerm] <- traitCo[colTerm,rowTerm] + crossVal
+            }
+          }
+        }
+        corTraitCo <- cor(traitCo)
+        Mydissimilarity_10values_r <- smacof::sim2diss(corTraitCo, method = "rank", to.dist = T)
+        MDS_ordinal_10values_r <- mds(Mydissimilarity_10values_r, type="ordinal")
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_shepard_randomized.png"))
+        plot(MDS_ordinal_10values_r, plot.type = "Shepard", main="Ordinal")
+        text(55,.02, paste("Stress =", round(MDS_ordinal_10values_r$stress,2)))
+        dev.off()
+        MDSmod_10values_r <- mds(Mydissimilarity_10values_r, ndim = 2, type = c("ordinal"))
+        MDSmod_10values_r$stress
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_randomized.png"))
+        plot(MDSmod_10values_r, main = "1710 // Rank", xlab = "Dimension 1", ylab = "Dimension 2")
+        dev.off()
+        
+        Mydissimilarity_10values_c <- sim2diss(corTraitCo, method = "corr", to.dist = T)
+        MDS_ordinal_10values_c <- mds(Mydissimilarity_10values_c, type="ordinal")
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_shepard_randomized.png"))
+        plot(MDS_ordinal_10values_c, plot.type = "Shepard", main="Ordinal")
+        text(55,.02, paste("Stress =", round(MDS_ordinal_10values_c$stress,2)))
+        dev.off()
+        MDSmod_10values_c <- mds(Mydissimilarity_10values_c, ndim = 2, type = c("ordinal"))
+        MDSmod_10values_c$stress
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_randomized.png"))
+        plot(MDSmod_10values_c, main = "1710 // Correlation", xlab = "Dimension 1", ylab = "Dimension 2")
+        dev.off()
+        
+        
+        for(i in 1:nrow(sent)){
+          for(j in 1:nrow(sent)){
+            rowTerm <- sample(baseTraits, 1,prob = traitProbs)
+            colTerm <- sample(baseTraits, 1,prob = traitProbs)
+            crossVal <- sent[i,j]
+            if(rowTerm!=colTerm & (!is.na(rowTerm) & !is.na(colTerm)) & (rowTerm != "-" & colTerm != "-")){
+              traitCo[rowTerm,colTerm] <- traitCo[rowTerm,colTerm] + crossVal
+              traitCo[colTerm,rowTerm] <- traitCo[colTerm,rowTerm] + crossVal
+            }
+          }
+        }
+        corTraitCo <- cor(traitCo)
+        Mydissimilarity_10values_r <- smacof::sim2diss(corTraitCo, method = "rank", to.dist = T)
+        MDS_ordinal_10values_r <- mds(Mydissimilarity_10values_r, type="ordinal")
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_shepard_randomized_probability.png"))
+        plot(MDS_ordinal_10values_r, plot.type = "Shepard", main="Ordinal")
+        text(55,.02, paste("Stress =", round(MDS_ordinal_10values_r$stress,2)))
+        dev.off()
+        MDSmod_10values_r <- mds(Mydissimilarity_10values_r, ndim = 2, type = c("ordinal"))
+        MDSmod_10values_r$stress
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_randomized_probability.png"))
+        plot(MDSmod_10values_r, main = "1710 // Rank", xlab = "Dimension 1", ylab = "Dimension 2")
+        dev.off()
+        
+        Mydissimilarity_10values_c <- sim2diss(corTraitCo, method = "corr", to.dist = T)
+        MDS_ordinal_10values_c <- mds(Mydissimilarity_10values_c, type="ordinal")
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_shepard_randomized_probability.png"))
+        plot(MDS_ordinal_10values_c, plot.type = "Shepard", main="Ordinal")
+        text(55,.02, paste("Stress =", round(MDS_ordinal_10values_c$stress,2)))
+        dev.off()
+        MDSmod_10values_c <- mds(Mydissimilarity_10values_c, ndim = 2, type = c("ordinal"))
+        MDSmod_10values_c$stress
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_randomized_probability.png"))
+        plot(MDSmod_10values_c, main = "1710 // Correlation", xlab = "Dimension 1", ylab = "Dimension 2")
+        dev.off()
+    }
+  }
+}
+
+### FOR 1710
+
+
+setwd("/Users/mlr/OneDrive - Victoria University of Wellington - STAFF/Git/tic-personality-words/outputs save/pda1710-1000words-advs-lemma-book-centric/")
+
+## Creating a list with all co-ocurrence matrices for all outputs
+allmatrices <- list.files(paste0("."),
+                          pattern = "(.*)_network_matrix.csv",
+                          full.names = T)
+
+alllinks <- list.files(paste0("."),
+                       pattern = "(.*)_links.csv",
+                       full.names = T)
+
+allnodes <- list.files(paste0("."),
+                       pattern = "(.*)_nodes.csv",
+                       full.names = T)
+
+thresholds <- list(0,0.05,0.1,0.15,0.25,-0.8,-0.6,-0.4,-0.2)
+
+for(thresh in thresholds){
+  if (!file.exists(as.character(thresh))){
+    dir.create(as.character(thresh))
+  }
+
+  ## Fetching the data of the co-ocurrence matrices
+  cooc <- lapply(allmatrices, function(x) read.table(x, header = T, check.names = F))
+  link <- lapply(alllinks, function(x) read.table(x, header = T, check.names = F,
+                                                  stringsAsFactors = F))
+  node <- lapply(allnodes, function(x) read.table(x, header = T, check.names = F,
+                                                  stringsAsFactors = F))
+  
+  for(bb in 1:length(cooc)){
+    rownames(cooc[[bb]]) <- cooc[[bb]][,1]
+    cooc[[bb]][,1] <- NULL
+    if(thresh > 0){
+      # rare co-occurring terms
+      rareT <- which(rowSums(cooc[[bb]]) <= ceiling(max(rowSums(cooc[[bb]])) * thresh))
+      # frequent co-occ terms
+      freqT <- which(rowSums(cooc[[bb]]) > ceiling(max(rowSums(cooc[[bb]])) * thresh))
+      # rare terms only co-occurring with rare terms
+      #finalRare <- which(colSums(cooc[[bb]][freqT,]) == 0)
+      if(length(rareT)>0){
+        cooc[[bb]] <- cooc[[bb]][-rareT,-rareT]
+      }
+    } else if(thresh < 0){
+      # rare co-occurring terms
+      rareT <- which(rowSums(cooc[[bb]]) <= ceiling(max(rowSums(cooc[[bb]])) * (-1 * thresh)))
+      # frequent co-occ terms
+      freqT <- which(rowSums(cooc[[bb]]) > ceiling(max(rowSums(cooc[[bb]])) * (-1 * thresh)))
+      # rare terms only co-occurring with rare terms
+      #finalRare <- which(colSums(cooc[[bb]][freqT,]) == 0)
+      if(length(rareT)>0){
+        cooc[[bb]] <- cooc[[bb]][rareT,rareT]
+      }
+    }
+  }
+  
+  
+  
+  
+  
+  
+  index <- 0
+  for (sent in cooc) {
+    index <- index + 1
+    ## cluster text
+    #sent[lower.tri(sent)] <- 0
+    write.table(sent, paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_network_matrix.csv"),sep=" ")
+    test <- Rtsne::Rtsne(sent,check_duplicates=FALSE,
+                         pca=TRUE, perplexity = max(1,floor(nrow(sent)/3)-1), 
+                         theta=0, dims=2)
+    
+    corSent <- cor(sent)
+    result = tryCatch({
+      loadings2 <- NULL
+      loadings2 <- psych::fa(corSent,nfactors = 2,fm="minres",rotate = "varimax")
+      write.table(loadings2$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-2factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings2 <- psych::fa(corSent,nfactors = 2,fm="minres",rotate = "varimax")
+      write.table(loadings2$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-2factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings2})
+    
+    result = tryCatch({
+      loadings3 <- NULL
+      loadings3 <- psych::fa(corSent,nfactors = 3,fm="minres",rotate = "varimax")
+      write.table(loadings3$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-3factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings3 <- psych::fa(corSent,nfactors = 3,fm="minres",rotate = "varimax")
+      write.table(loadings3$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-3factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings3})
+    
+    result = tryCatch({
+      loadings4 <- NULL
+      loadings4 <- psych::fa(corSent,nfactors = 4,fm="minres",rotate = "varimax")
+      write.table(loadings4$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-4factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings4 <- psych::fa(corSent,nfactors = 4,fm="minres",rotate = "varimax")
+      write.table(loadings4$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-4factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings4})  
+    
+    result = tryCatch({
+      loadings5 <- NULL
+      loadings5 <- psych::fa(corSent,nfactors = 5,fm="minres",rotate = "varimax")
+      write.table(loadings5$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-5factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings5 <- psych::fa(corSent,nfactors = 5,fm="minres",rotate = "varimax")
+      write.table(loadings5$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-5factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings5})  
+    
+    result = tryCatch({
+      loadings6 <- NULL
+      loadings6 <- psych::fa(corSent,nfactors = 6,fm="minres",rotate = "varimax")
+      write.table(loadings6$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-6factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings6 <- psych::fa(corSent,nfactors = 6,fm="minres",rotate = "varimax")
+      write.table(loadings6$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-6factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings6})
+    
+    result = tryCatch({
+      loadings7 <- NULL
+      loadings7 <- psych::fa(corSent,nfactors = 7,fm="minres",rotate = "varimax")
+      write.table(loadings7$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-7factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings7 <- psych::fa(corSent,nfactors = 7,fm="minres",rotate = "varimax")
+      write.table(loadings7$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-7factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={rm(loadings7)})
+    #withkmeans
+    fit_cluster_kmeans <- fpc::kmeansruns(test$Y,krange=2:(nrow(sent)/2),critout=F,runs=5,criterion="ch")
+    
+    write.csv2(data.frame(terms=rownames(sent),clusters=fit_cluster_kmeans$cluster),paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-TSNE-cluster.csv"), row.names = F, col.names = F, sep = ";")
+    #with dbscan
+    #ds <- dbscan::dbscan(scale(test$Y), 20)
+    #cc <- randomcoloR::distinctColorPalette(max(ds$cluster))
+    #sub_title <- "dbscan"
+    #plot(test$Y[,1], test$Y[,2], col=cc[ds$cluster], cex.axis = plot_cex_axis, cex=plot_cex, cex.lab=plot_cex_lab, cex.main = plot_cex_main, pch=20, main = paste0("DBSCAN"))
+    #text(x=test$Y[,1], y=test$Y[,2], cex=0.8, pos=4, labels=rownames(sent))
+    
+    # trait categories from 1710 coded file
+    curTerms <- as.data.frame(cbind(rownames(sent),fit_cluster_kmeans$cluster),stringsAsFactors = F)
+    
+    wordTrait <- read.table("../../resources/pda1710_no_abbreviation_loadings_categories.csv",sep=",",header = T)
+    wordTrait$Word<-tolower(wordTrait$Word)
+    
+    #add the max trait variable without loading threshold
+    wordTrait$maxValTrait <- ""
+    wordTrait$thresholdValTrait <- ""
+    for(i in 1:nrow(wordTrait)){
+      wordTrait$maxValTrait[i] <- names(which.max(abs(wordTrait[i,5:9])))
+      wordTrait$thresholdValTrait[i] <- ifelse(length(which(abs(wordTrait[i,5:9])>.25))>0,names(which.max(abs(wordTrait[i,5:9]))),"")
+    }
+    
+    #distribution of traits when max value is used without threshold
+    #plyr::count(wordTrait$maxValTrait)
+    
+    matched <- wordTrait[which(wordTrait$Word %in% curTerms$V1),]
+    
+    #for above threshold .3 loading as coded
+    #curTerms$trait <- ""
+    #curTerms[which(curTerms$V1 %in% matched$Word),3] <- as.character(matched[which(matched$Word %in% curTerms$V1),2])
+    
+    #for max value loading without threshold
+    #curTerms$trait <- ""
+    #curTerms[which(curTerms$V1 %in% matched$Word),3] <- as.character(matched[which(matched$Word %in% curTerms$V1),10])
+    
+    #for max value loading with threshold
+    curTerms$trait <- ""
+    curTerms[which(curTerms$V1 %in% matched$Word),3] <- as.character(matched[which(matched$Word %in% curTerms$V1),11])
+    
+    colnames(curTerms)<-c("term","cluster","trait")
+    
+    curTerms$trait[which(curTerms$trait=="")] <- "N.N."
+    
+    ### for pda500 loading file
+    curTerms2 <- as.data.frame(cbind(rownames(sent),fit_cluster_kmeans$cluster),stringsAsFactors = F)
+    
+    wordTrait2 <- read.table("../../resources/pda500-trait-matches.csv",sep=",",header = T)
+    wordTrait2$Term<-tolower(wordTrait2$Term)
+    
+    #distribution of traits when max value is used without threshold
+    #plyr::count(wordTrait2$maxValTrait)
+    
+    matched <- wordTrait2[which(wordTrait2$Term %in% curTerms2$V1),c(1,3)]
+    
+    curTerms2$trait <- ""
+    curTerms2[which(curTerms2$V1 %in% matched$Term),3] <- as.character(matched[which(matched$Term %in% curTerms2$V1),2])
+    
+    colnames(curTerms2)<-c("term","cluster","trait")
+    
+    curTerms2$trait[which(curTerms2$trait=="")] <- "N.N."
+    
+    
+    #plot kmeans
+    cc <- randomcoloR::distinctColorPalette(max(fit_cluster_kmeans$cluster))
+    png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_cluster_terms_2d.png"))
+    plot(test$Y[,1], test$Y[,2], col=cc[fit_cluster_kmeans$cluster], cex.axis = plot_cex_axis, cex=plot_cex, cex.lab=plot_cex_lab, cex.main = plot_cex_main, pch=20, main = paste0("DBSCAN"))
+    points(fit_cluster_kmeans$centers, col = cc, pch = 8, cex = 2)
+    #text(x=test$Y[,1], y=test$Y[,2], cex=0.8, pos=4, labels=rownames(sent))
+    text(x=test$Y[,1], y=test$Y[,2], cex=0.8, pos=4, labels=paste0(rownames(sent), " - ",curTerms[which(curTerms$term==rownames(sent)),3]))
+    text(x=fit_cluster_kmeans$centers[,1], y=fit_cluster_kmeans$centers[,2], cex=0.8, pos=2, labels=c(1:fit_cluster_kmeans$bestk))
+    dev.off()
+    
+    
+    #barplot
+    plo <- ggplot(plyr::count(curTerms,vars=cluster~trait), aes(x=cluster, y=freq, fill=trait)) +
+      geom_bar(stat="identity", colour="white") +
+      geom_text(aes(label=paste0(trait,"-",freq)),position=position_stack(vjust=0.5), colour="white",size = 3) +
+      ggtitle(gsub("\\_links\\.csv","",alllinks[[index]])) + 
+      coord_flip()
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_cluster_traits.jpg"),plot=plo,device="jpeg")
+    
+    
+    # without NN labels
+    plo <- ggplot(plyr::count(curTerms[which(curTerms$trait!="N.N."),],vars=cluster~trait), aes(x=cluster, y=freq, fill=trait)) +
+      geom_bar(stat="identity", colour="white") +
+      geom_text(aes(label=paste0(trait,"-",freq)),position=position_stack(vjust=0.5), colour="white",size = 3) +
+      ggtitle(gsub("\\_links\\.csv","",alllinks[[index]])) + 
+      coord_flip()
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_cluster_traits_noNN.jpg"),plot=plo,device="jpeg")
+    
+    
+    #traits per node
+    tA<-c(0)
+    tC<-c(0)
+    tE<-c(0)
+    tN<-c(0)
+    tO<-c(0)
+    tNN<-c(0)
+    
+    nod <- node[[index]]
+    nod$A <- 0
+    nod$C <- 0
+    nod$E <- 0
+    nod$N <- 0
+    nod$O <- 0
+    nod$NN <- 0
+    
+    for(i in 1:nrow(node[[index]])){
+      nodeTraits <- as.data.frame(unlist(str_split(node[[index]][i,2],", ")),stringsAsFactors = F)
+      colnames(nodeTraits)<-c("words")
+      nodeTraits$trait <- ""
+      nodeTraits[which(nodeTraits$words %in% wordTrait$Word),2] <- as.character(wordTrait[which(wordTrait$Word %in% nodeTraits$words),11])
+      colnames(nodeTraits)<-c("word","trait")
+      nodeTraits$trait[which(nodeTraits$trait=="")] <- "N.N."
+      
+      cnt_tbl <- plyr::count(nodeTraits$trait)
+      
+      tA <- c(tA,ifelse(length(cnt_tbl[which(cnt_tbl$x=="A"),2]>0), tA[length(tA)] + cnt_tbl[which(cnt_tbl$x=="A"),2], tA[length(tA)]))
+      nod$A[i] <- tA[i+1]
+      tC <- c(tC,ifelse(length(cnt_tbl[which(cnt_tbl$x=="C"),2]>0), tC[length(tC)] + cnt_tbl[which(cnt_tbl$x=="C"),2], tC[length(tC)]))
+      nod$C[i] <- tC[i+1]
+      tE <- c(tE,ifelse(length(cnt_tbl[which(cnt_tbl$x=="E"),2]>0), tE[length(tE)] + cnt_tbl[which(cnt_tbl$x=="E"),2], tE[length(tE)]))
+      nod$E[i] <- tE[i+1]
+      tN <- c(tN,ifelse(length(cnt_tbl[which(cnt_tbl$x=="N"),2]>0), tN[length(tN)] + cnt_tbl[which(cnt_tbl$x=="N"),2], tN[length(tN)]))
+      nod$N[i] <- tN[i+1]
+      tO <- c(tO,ifelse(length(cnt_tbl[which(cnt_tbl$x=="O"),2]>0), tO[length(tO)] + cnt_tbl[which(cnt_tbl$x=="O"),2], tO[length(tO)]))
+      nod$O[i] <- tO[i+1]
+      tNN <- c(tNN,ifelse(length(cnt_tbl[which(cnt_tbl$x=="N.N."),2]>0), tNN[length(tNN)] + cnt_tbl[which(cnt_tbl$x=="N.N."),2], tNN[length(tNN)]))
+      nod$NN[i] <- tNN[i+1]
+      
+    }
+    tA <- as.data.frame(tA)
+    tC <- as.data.frame(tC)
+    tE <- as.data.frame(tE)
+    tN <- as.data.frame(tN)
+    tO <- as.data.frame(tO)
+    tNN <- as.data.frame(tNN)
+    
+    colnames(tA) <- c("vals")
+    tA$rws <- rownames(tA)
+    colnames(tC) <- c("vals")
+    tC$rws <- rownames(tC)
+    colnames(tE) <- c("vals")
+    tE$rws <- rownames(tE)
+    colnames(tN) <- c("vals")
+    tN$rws <- rownames(tN)
+    colnames(tO) <- c("vals")
+    tO$rws <- rownames(tO)
+    colnames(tNN) <- c("vals")
+    tNN$rws <- rownames(tNN)
+    
+    out <- list()
+    out["tA"] <- tA
+    out["tC"] <- tC
+    out["tE"] <- tE
+    out["tN"] <- tN
+    out["tO"] <- tO
+    #out["tNN"] <- tNN
+    
+    dat <- lapply(out, function(x) cbind(x = seq_along(x), y = x))
+    
+    list.names <- names(dat)
+    lns <- sapply(dat, nrow)
+    dat <- as.data.frame(do.call("rbind", dat))
+    dat$group <- rep(list.names, lns)
+    
+    plo <- ggplot(dat, aes(x = x, y = y, colour = group)) +
+      theme_bw() +
+      geom_line(linetype = "dotted") +
+      ggtitle(gsub("\\_links\\.csv","",alllinks[[index]]))
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_node_traits.jpg"),plot=plo,device="jpeg")
+    
+    
+    
+    #traits per node
+    tA<-c(0)
+    tC<-c(0)
+    tE<-c(0)
+    tN<-c(0)
+    tO<-c(0)
+    tNN<-c(0)
+    
+    for(i in 1:nrow(node[[index]])){
+      nodeTraits <- as.data.frame(unlist(str_split(node[[index]][i,2],", ")),stringsAsFactors = F)
+      
+      if(node[[index]][i,2] != ""){
+        colnames(nodeTraits)<-c("words")
+        nodeTraits$trait <- ""
+        nodeTraits[which(nodeTraits$words %in% wordTrait2$Term),2] <- as.character(wordTrait2[which(wordTrait2$Term %in% nodeTraits$words),3])
+        colnames(nodeTraits)<-c("word","trait")
+        nodeTraits$trait[which(nodeTraits$trait=="")] <- "N.N."
+      }
+      
+      cnt_tbl <- plyr::count(nodeTraits$trait)
+      
+      tA <- c(tA,ifelse(length(cnt_tbl[which(cnt_tbl$x=="A"),2]>0), tA[length(tA)] + cnt_tbl[which(cnt_tbl$x=="A"),2], tA[length(tA)]))
+      tC <- c(tC,ifelse(length(cnt_tbl[which(cnt_tbl$x=="C"),2]>0), tC[length(tC)] + cnt_tbl[which(cnt_tbl$x=="C"),2], tC[length(tC)]))
+      tE <- c(tE,ifelse(length(cnt_tbl[which(cnt_tbl$x=="E"),2]>0), tE[length(tE)] + cnt_tbl[which(cnt_tbl$x=="E"),2], tE[length(tE)]))
+      tN <- c(tN,ifelse(length(cnt_tbl[which(cnt_tbl$x=="N"),2]>0), tN[length(tN)] + cnt_tbl[which(cnt_tbl$x=="N"),2], tN[length(tN)]))
+      tO <- c(tO,ifelse(length(cnt_tbl[which(cnt_tbl$x=="O"),2]>0), tO[length(tO)] + cnt_tbl[which(cnt_tbl$x=="O"),2], tO[length(tO)]))
+      tNN <- c(tNN,ifelse(length(cnt_tbl[which(cnt_tbl$x=="N.N."),2]>0), tNN[length(tNN)] + cnt_tbl[which(cnt_tbl$x=="N.N."),2], tNN[length(tNN)]))
+      
+    }
+    tA <- as.data.frame(tA)
+    tC <- as.data.frame(tC)
+    tE <- as.data.frame(tE)
+    tN <- as.data.frame(tN)
+    tO <- as.data.frame(tO)
+    tNN <- as.data.frame(tNN)
+    
+    colnames(tA) <- c("vals")
+    tA$rws <- rownames(tA)
+    colnames(tC) <- c("vals")
+    tC$rws <- rownames(tC)
+    colnames(tE) <- c("vals")
+    tE$rws <- rownames(tE)
+    colnames(tN) <- c("vals")
+    tN$rws <- rownames(tN)
+    colnames(tO) <- c("vals")
+    tO$rws <- rownames(tO)
+    colnames(tNN) <- c("vals")
+    tNN$rws <- rownames(tNN)
+    
+    out <- list()
+    out["tA"] <- tA
+    out["tC"] <- tC
+    out["tE"] <- tE
+    out["tN"] <- tN
+    out["tO"] <- tO
+    #out["tNN"] <- tNN
+    
+    dat <- lapply(out, function(x) cbind(x = seq_along(x), y = x))
+    
+    list.names <- names(dat)
+    lns <- sapply(dat, nrow)
+    dat <- as.data.frame(do.call("rbind", dat))
+    dat$group <- rep(list.names, lns)
+    
+    plo <- ggplot(dat, aes(x = x, y = y, colour = group)) +
+      theme_bw() +
+      geom_line(linetype = "dotted") +
+      ggtitle(gsub("\\_links\\.csv","",alllinks[[index]]))
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_node_traits_500.jpg"),plot=plo,device="jpeg")
+    
+    ## time series analysis of traits
+    #ts1 <- zoo::zoo(nod$A)
+    #ts1_rate <- log(ts1 / stats::lag(ts1))
+    #ts1_rate <- diff(ts1)
+    #ts2 <- zoo::zoo(nod$C)
+    #ts2_rate <- log(ts2 / stats::lag(ts2))
+    #ts2_rate <- diff(ts2)
+    #lmtest::grangertest(ts1_rate ~ ts2_rate, order = 1)
+    
+    
+    ###MDS on traits
+    if(thresh < 0.1){
+      sent[lower.tri(sent)] <- 0
+      
+      wordTrait <- read.table("../../resources/pda1710_no_abbreviation_loadings_categories.csv",sep=",",header = T)
+      wordTrait$Word<-tolower(wordTrait$Word)
+      
+      #add the max trait variable without loading threshold
+      wordTrait$maxValTrait <- ""
+      wordTrait$thresholdValTrait <- ""
+      for(i in 1:nrow(wordTrait)){
+        wordTrait$maxValTrait[i] <- names(which.max(abs(wordTrait[i,5:9])))
+        wordTrait$thresholdValTrait[i] <- ifelse(length(which(abs(wordTrait[i,5:9])>.25))>0,names(which.max(abs(wordTrait[i,5:9]))),"")
+      }
+      
+      traitCo <- matrix(nrow=5,ncol=5,data = 0)
+      rownames(traitCo)<-c("A","C","E","N","O")
+      colnames(traitCo)<-c("A","C","E","N","O")
+      
+      for(i in 1:nrow(sent)){
+        for(j in 1:nrow(sent)){
+          rowTerm <- as.character(wordTrait$thresholdValTrait[which(wordTrait$Word==rownames(sent)[i])][1])
+          colTerm <- as.character(wordTrait$thresholdValTrait[which(wordTrait$Word==colnames(sent)[j])][1])
+          crossVal <- sent[i,j]
+          if(rowTerm!=colTerm & (!is.na(rowTerm) & !is.na(colTerm)) & (rowTerm != "" & colTerm != "")){
+            traitCo[rowTerm,colTerm] <- traitCo[rowTerm,colTerm] + crossVal
+            traitCo[colTerm,rowTerm] <- traitCo[colTerm,rowTerm] + crossVal
+          }
+        }
+      }
+      corTraitCo <- cor(traitCo)
+      Mydissimilarity_10values_r <- smacof::sim2diss(corTraitCo, method = "rank", to.dist = T)
+      MDS_ordinal_10values_r <- mds(Mydissimilarity_10values_r, type="ordinal")
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_shepard.png"))
+      plot(MDS_ordinal_10values_r, plot.type = "Shepard", main="Ordinal")
+      text(55,.02, paste("Stress =", round(MDS_ordinal_10values_r$stress,2)))
+      dev.off()
+      MDSmod_10values_r <- mds(Mydissimilarity_10values_r, ndim = 2, type = c("ordinal"))
+      MDSmod_10values_r$stress
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank.png"))
+      plot(MDSmod_10values_r, main = "1710 // Rank", xlab = "Dimension 1", ylab = "Dimension 2")
+      dev.off()
+      
+      Mydissimilarity_10values_c <- sim2diss(corTraitCo, method = "corr", to.dist = T)
+      MDS_ordinal_10values_c <- mds(Mydissimilarity_10values_c, type="ordinal")
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_shepard.png"))
+      plot(MDS_ordinal_10values_c, plot.type = "Shepard", main="Ordinal")
+      text(55,.02, paste("Stress =", round(MDS_ordinal_10values_c$stress,2)))
+      dev.off()
+      MDSmod_10values_c <- mds(Mydissimilarity_10values_c, ndim = 2, type = c("ordinal"))
+      MDSmod_10values_c$stress
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr.png"))
+      plot(MDSmod_10values_c, main = "1710 // Correlation", xlab = "Dimension 1", ylab = "Dimension 2")
+      dev.off()
+      
+      
+      ###MDS on traits randomized
+      traitCo <- matrix(nrow=5,ncol=5,data = 0)
+      rownames(traitCo)<-c("A","C","E","N","O")
+      colnames(traitCo)<-c("A","C","E","N","O")
+      baseTraits<-c("A","C","E","N","O")
+      traitCounts <- plyr::count(wordTrait$thresholdValTrait)
+      traitCounts <- traitCounts[-which(traitCounts$x==""),]
+      traitProbs <- traitCounts$freq/sum(traitCounts$freq)
+      
+      for(i in 1:nrow(sent)){
+        for(j in 1:nrow(sent)){
+          rowTerm <- sample(baseTraits, 1)
+          colTerm <- sample(baseTraits, 1)
+          crossVal <- sent[i,j]
+          if(rowTerm!=colTerm & (!is.na(rowTerm) & !is.na(colTerm)) & (rowTerm != "-" & colTerm != "-")){
+            traitCo[rowTerm,colTerm] <- traitCo[rowTerm,colTerm] + crossVal
+            traitCo[colTerm,rowTerm] <- traitCo[colTerm,rowTerm] + crossVal
+          }
+        }
+      }
+      corTraitCo <- cor(traitCo)
+      Mydissimilarity_10values_r <- smacof::sim2diss(corTraitCo, method = "rank", to.dist = T)
+      MDS_ordinal_10values_r <- mds(Mydissimilarity_10values_r, type="ordinal")
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_shepard_randomized.png"))
+      plot(MDS_ordinal_10values_r, plot.type = "Shepard", main="Ordinal")
+      text(55,.02, paste("Stress =", round(MDS_ordinal_10values_r$stress,2)))
+      dev.off()
+      MDSmod_10values_r <- mds(Mydissimilarity_10values_r, ndim = 2, type = c("ordinal"))
+      MDSmod_10values_r$stress
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_randomized.png"))
+      plot(MDSmod_10values_r, main = "1710 // Rank", xlab = "Dimension 1", ylab = "Dimension 2")
+      dev.off()
+      
+      Mydissimilarity_10values_c <- sim2diss(corTraitCo, method = "corr", to.dist = T)
+      MDS_ordinal_10values_c <- mds(Mydissimilarity_10values_c, type="ordinal")
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_shepard_randomized.png"))
+      plot(MDS_ordinal_10values_c, plot.type = "Shepard", main="Ordinal")
+      text(55,.02, paste("Stress =", round(MDS_ordinal_10values_c$stress,2)))
+      dev.off()
+      MDSmod_10values_c <- mds(Mydissimilarity_10values_c, ndim = 2, type = c("ordinal"))
+      MDSmod_10values_c$stress
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_randomized.png"))
+      plot(MDSmod_10values_c, main = "1710 // Correlation", xlab = "Dimension 1", ylab = "Dimension 2")
+      dev.off()
+      
+      
+      for(i in 1:nrow(sent)){
+        for(j in 1:nrow(sent)){
+          rowTerm <- sample(baseTraits, 1,prob = traitProbs)
+          colTerm <- sample(baseTraits, 1,prob = traitProbs)
+          crossVal <- sent[i,j]
+          if(rowTerm!=colTerm & (!is.na(rowTerm) & !is.na(colTerm)) & (rowTerm != "-" & colTerm != "-")){
+            traitCo[rowTerm,colTerm] <- traitCo[rowTerm,colTerm] + crossVal
+            traitCo[colTerm,rowTerm] <- traitCo[colTerm,rowTerm] + crossVal
+          }
+        }
+      }
+      corTraitCo <- cor(traitCo)
+      Mydissimilarity_10values_r <- smacof::sim2diss(corTraitCo, method = "rank", to.dist = T)
+      MDS_ordinal_10values_r <- mds(Mydissimilarity_10values_r, type="ordinal")
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_shepard_randomized_probability.png"))
+      plot(MDS_ordinal_10values_r, plot.type = "Shepard", main="Ordinal")
+      text(55,.02, paste("Stress =", round(MDS_ordinal_10values_r$stress,2)))
+      dev.off()
+      MDSmod_10values_r <- mds(Mydissimilarity_10values_r, ndim = 2, type = c("ordinal"))
+      MDSmod_10values_r$stress
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_randomized_probability.png"))
+      plot(MDSmod_10values_r, main = "1710 // Rank", xlab = "Dimension 1", ylab = "Dimension 2")
+      dev.off()
+      
+      Mydissimilarity_10values_c <- sim2diss(corTraitCo, method = "corr", to.dist = T)
+      MDS_ordinal_10values_c <- mds(Mydissimilarity_10values_c, type="ordinal")
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_shepard_randomized_probability.png"))
+      plot(MDS_ordinal_10values_c, plot.type = "Shepard", main="Ordinal")
+      text(55,.02, paste("Stress =", round(MDS_ordinal_10values_c$stress,2)))
+      dev.off()
+      MDSmod_10values_c <- mds(Mydissimilarity_10values_c, ndim = 2, type = c("ordinal"))
+      MDSmod_10values_c$stress
+      png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_randomized_probability.png"))
+      plot(MDSmod_10values_c, main = "1710 // Correlation", xlab = "Dimension 1", ylab = "Dimension 2")
+      dev.off()
+    }
+    
+  }
+}
+
+
+
+### FOR Alport through 1710 and 500 lists
+
+
+setwd("/Users/mlr/OneDrive - Victoria University of Wellington - STAFF/Projects/2018-psychological-trait-words-cascades/natureoutput/allAdjectives-all-slices/400/")
+
+## Creating a list with all co-ocurrence matrices for all outputs
+allmatrices <- list.files(paste0("."),
+                          pattern = "(.*)_network_matrix.csv",
+                          full.names = T)
+
+alllinks <- list.files(paste0("."),
+                       pattern = "(.*)_links.csv",
+                       full.names = T)
+
+allnodes <- list.files(paste0("."),
+                       pattern = "(.*)_nodes.csv",
+                       full.names = T)
+
+thresholds <- list(0,0.05,0.1,0.15,0.25,-0.8,-0.6,-0.4,-0.2)
+
+for(thresh in thresholds){
+  if (!file.exists(as.character(thresh))){
+    dir.create(as.character(thresh))
+  }
+
+  ## Fetching the data of the co-ocurrence matrices
+  cooc <- lapply(allmatrices, function(x) read.table(x, header = T, check.names = F))
+  link <- lapply(alllinks, function(x) read.table(x, header = T, check.names = F,
+                                                  stringsAsFactors = F))
+  node <- lapply(allnodes, function(x) read.table(x, header = T, check.names = F,
+                                                  stringsAsFactors = F))
+  
+  for(bb in 1:length(cooc)){
+    rownames(cooc[[bb]]) <- cooc[[bb]][,1]
+    cooc[[bb]][,1] <- NULL
+    if(thresh > 0){
+      # rare co-occurring terms
+      rareT <- which(rowSums(cooc[[bb]]) <= ceiling(max(rowSums(cooc[[bb]])) * thresh))
+      # frequent co-occ terms
+      freqT <- which(rowSums(cooc[[bb]]) > ceiling(max(rowSums(cooc[[bb]])) * thresh))
+      # rare terms only co-occurring with rare terms
+      #finalRare <- which(colSums(cooc[[bb]][freqT,]) == 0)
+      if(length(rareT)>0){
+        cooc[[bb]] <- cooc[[bb]][-rareT,-rareT]
+      }
+    } else if(thresh < 0){
+      # rare co-occurring terms
+      rareT <- which(rowSums(cooc[[bb]]) <= ceiling(max(rowSums(cooc[[bb]])) * (-1 * thresh)))
+      # frequent co-occ terms
+      freqT <- which(rowSums(cooc[[bb]]) > ceiling(max(rowSums(cooc[[bb]])) * (-1 * thresh)))
+      # rare terms only co-occurring with rare terms
+      #finalRare <- which(colSums(cooc[[bb]][freqT,]) == 0)
+      if(length(rareT)>0){
+        cooc[[bb]] <- cooc[[bb]][rareT,rareT]
+      }
+    }
+  }
+  
+  
+  
+  
+  
+  
+  index <- 0
+  for (sent in cooc) {
+    index <- index + 1
+    ## cluster text
+    #sent[lower.tri(sent)] <- 0
+    write.table(sent, paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_network_matrix.csv"),sep=" ")
+    test <- Rtsne::Rtsne(sent,check_duplicates=FALSE,
+                         pca=TRUE, perplexity = max(1,floor(nrow(sent)/3)-1), 
+                         theta=0, dims=2)
+    
+    result = tryCatch({
+      loadings2 <- NULL
+      loadings2 <- psych::fa(corSent,nfactors = 2,fm="minres",rotate = "varimax")
+      write.table(loadings2$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-2factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings2 <- psych::fa(corSent,nfactors = 2,fm="minres",rotate = "varimax")
+      write.table(loadings2$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-2factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings2})
+    
+    result = tryCatch({
+      loadings3 <- NULL
+      loadings3 <- psych::fa(corSent,nfactors = 3,fm="minres",rotate = "varimax")
+      write.table(loadings3$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-3factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings3 <- psych::fa(corSent,nfactors = 3,fm="minres",rotate = "varimax")
+      write.table(loadings3$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-3factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings3})
+    
+    result = tryCatch({
+      loadings4 <- NULL
+      loadings4 <- psych::fa(corSent,nfactors = 4,fm="minres",rotate = "varimax")
+      write.table(loadings4$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-4factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings4 <- psych::fa(corSent,nfactors = 4,fm="minres",rotate = "varimax")
+      write.table(loadings4$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-4factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings4})  
+    
+    result = tryCatch({
+      loadings5 <- NULL
+      loadings5 <- psych::fa(corSent,nfactors = 5,fm="minres",rotate = "varimax")
+      write.table(loadings5$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-5factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings5 <- psych::fa(corSent,nfactors = 5,fm="minres",rotate = "varimax")
+      write.table(loadings5$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-5factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings5})  
+    
+    result = tryCatch({
+      loadings6 <- NULL
+      loadings6 <- psych::fa(corSent,nfactors = 6,fm="minres",rotate = "varimax")
+      write.table(loadings6$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-6factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings6 <- psych::fa(corSent,nfactors = 6,fm="minres",rotate = "varimax")
+      write.table(loadings6$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-6factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={loadings6})
+    
+    result = tryCatch({
+      loadings7 <- NULL
+      loadings7 <- psych::fa(corSent,nfactors = 7,fm="minres",rotate = "varimax")
+      write.table(loadings7$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-7factors.csv"),sep = ";")
+    }, warning = function(warning_condition) {
+      loadings7 <- psych::fa(corSent,nfactors = 7,fm="minres",rotate = "varimax")
+      write.table(loadings7$loadings,paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-7factors.csv"),sep = ";")
+    }, error = function(error_condition) {}, finally={rm(loadings7)})
+    
+    #withkmeans
+    fit_cluster_kmeans <- fpc::kmeansruns(test$Y,krange=2:(nrow(sent)/2),critout=F,runs=5,criterion="ch")
+    
+    write.csv2(data.frame(terms=rownames(sent),clusters=fit_cluster_kmeans$cluster),paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"-TSNE-cluster.csv"), row.names = F, col.names = F, sep = ";")
+    #with dbscan
+    #ds <- dbscan::dbscan(scale(test$Y), 20)
+    #cc <- randomcoloR::distinctColorPalette(max(ds$cluster))
+    #sub_title <- "dbscan"
+    #plot(test$Y[,1], test$Y[,2], col=cc[ds$cluster], cex.axis = plot_cex_axis, cex=plot_cex, cex.lab=plot_cex_lab, cex.main = plot_cex_main, pch=20, main = paste0("DBSCAN"))
+    #text(x=test$Y[,1], y=test$Y[,2], cex=0.8, pos=4, labels=rownames(sent))
+    
+    # trait categories from 1710 coded file
+    curTerms <- as.data.frame(cbind(rownames(sent),fit_cluster_kmeans$cluster),stringsAsFactors = F)
+    
+    wordTrait <- read.table("../../resources/pda1710_no_abbreviation_loadings_categories.csv",sep=",",header = T)
+    wordTrait$Word<-tolower(wordTrait$Word)
+    
+    #add the max trait variable without loading threshold
+    wordTrait$maxValTrait <- ""
+    wordTrait$thresholdValTrait <- ""
+    for(i in 1:nrow(wordTrait)){
+      wordTrait$maxValTrait[i] <- names(which.max(abs(wordTrait[i,5:9])))
+      wordTrait$thresholdValTrait[i] <- ifelse(length(which(abs(wordTrait[i,5:9])>.25))>0,names(which.max(abs(wordTrait[i,5:9]))),"")
+    }
+    
+    #distribution of traits when max value is used without threshold
+    #plyr::count(wordTrait$maxValTrait)
+    
+    matched <- wordTrait[which(wordTrait$Word %in% curTerms$V1),]
+    
+    #for above threshold .3 loading as coded
+    #curTerms$trait <- ""
+    #curTerms[which(curTerms$V1 %in% matched$Word),3] <- as.character(matched[which(matched$Word %in% curTerms$V1),2])
+    
+    #for max value loading without threshold
+    #curTerms$trait <- ""
+    #curTerms[which(curTerms$V1 %in% matched$Word),3] <- as.character(matched[which(matched$Word %in% curTerms$V1),10])
+    
+    #for max value loading with threshold
+    curTerms$trait <- ""
+    curTerms[which(curTerms$V1 %in% matched$Word),3] <- as.character(matched[which(matched$Word %in% curTerms$V1),11])
+    
+    colnames(curTerms)<-c("term","cluster","trait")
+    
+    curTerms$trait[which(curTerms$trait=="")] <- "N.N."
+    
+    ### for pda500 loading file
+    curTerms2 <- as.data.frame(cbind(rownames(sent),fit_cluster_kmeans$cluster),stringsAsFactors = F)
+    
+    wordTrait2 <- read.table("../../resources/pda500-trait-matches.csv",sep=",",header = T)
+    wordTrait2$Term<-tolower(wordTrait2$Term)
+    
+    #distribution of traits when max value is used without threshold
+    #plyr::count(wordTrait2$maxValTrait)
+    
+    matched <- wordTrait2[which(wordTrait2$Term %in% curTerms2$V1),c(1,3)]
+    
+    curTerms2$trait <- ""
+    curTerms2[which(curTerms2$V1 %in% matched$Term),3] <- as.character(matched[which(matched$Term %in% curTerms2$V1),2])
+    
+    colnames(curTerms2)<-c("term","cluster","trait")
+    
+    curTerms2$trait[which(curTerms2$trait=="")] <- "N.N."
+    
+    
+    #plot kmeans
+    cc <- randomcoloR::distinctColorPalette(max(fit_cluster_kmeans$cluster))
+    png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_cluster_terms_2d.png"))
+    plot(test$Y[,1], test$Y[,2], col=cc[fit_cluster_kmeans$cluster], cex.axis = plot_cex_axis, cex=plot_cex, cex.lab=plot_cex_lab, cex.main = plot_cex_main, pch=20, main = paste0("DBSCAN"))
+    points(fit_cluster_kmeans$centers, col = cc, pch = 8, cex = 2)
+    #text(x=test$Y[,1], y=test$Y[,2], cex=0.8, pos=4, labels=rownames(sent))
+    text(x=test$Y[,1], y=test$Y[,2], cex=0.8, pos=4, labels=paste0(rownames(sent), " - ",curTerms[which(curTerms$term==rownames(sent)),3]))
+    text(x=fit_cluster_kmeans$centers[,1], y=fit_cluster_kmeans$centers[,2], cex=0.8, pos=2, labels=c(1:fit_cluster_kmeans$bestk))
+    dev.off()
+    
+    
+    #barplot
+    plo <- ggplot(plyr::count(curTerms,vars=cluster~trait), aes(x=cluster, y=freq, fill=trait)) +
+      geom_bar(stat="identity", colour="white") +
+      geom_text(aes(label=paste0(trait,"-",freq)),position=position_stack(vjust=0.5), colour="white",size = 3) +
+      ggtitle(gsub("\\_links\\.csv","",alllinks[[index]])) + 
+      coord_flip()
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_cluster_traits.jpg"),plot=plo,device="jpeg")
+    
+    
+    # without NN labels
+    if(nrow(plyr::count(curTerms[which(curTerms$trait!="N.N."),],vars=cluster~trait))>0){
+      plo <- ggplot(plyr::count(curTerms[which(curTerms$trait!="N.N."),],vars=cluster~trait), aes(x=cluster, y=freq, fill=trait)) +
+        geom_bar(stat="identity", colour="white") +
+        geom_text(aes(label=paste0(trait,"-",freq)),position=position_stack(vjust=0.5), colour="white",size = 3) +
+        ggtitle(gsub("\\_links\\.csv","",alllinks[[index]])) + 
+        coord_flip()
+      ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_cluster_traits_noNN.jpg"),plot=plo,device="jpeg")
+    }
+    
+    
+    #traits per node
+    tA<-c(0)
+    tC<-c(0)
+    tE<-c(0)
+    tN<-c(0)
+    tO<-c(0)
+    tNN<-c(0)
+    
+    nod <- node[[index]]
+    nod$A <- 0
+    nod$C <- 0
+    nod$E <- 0
+    nod$N <- 0
+    nod$O <- 0
+    nod$NN <- 0
+    
+    for(i in 1:nrow(node[[index]])){
+      nodeTraits <- as.data.frame(unlist(str_split(node[[index]][i,2],", ")),stringsAsFactors = F)
+      colnames(nodeTraits)<-c("words")
+      nodeTraits$trait <- ""
+      nodeTraits[which(nodeTraits$words %in% wordTrait$Word),2] <- as.character(wordTrait[which(wordTrait$Word %in% nodeTraits$words),11])
+      colnames(nodeTraits)<-c("word","trait")
+      nodeTraits$trait[which(nodeTraits$trait=="")] <- "N.N."
+      
+      cnt_tbl <- plyr::count(nodeTraits$trait)
+      
+      tA <- c(tA,ifelse(length(cnt_tbl[which(cnt_tbl$x=="A"),2]>0), tA[length(tA)] + cnt_tbl[which(cnt_tbl$x=="A"),2], tA[length(tA)]))
+      nod$A[i] <- tA[i+1]
+      tC <- c(tC,ifelse(length(cnt_tbl[which(cnt_tbl$x=="C"),2]>0), tC[length(tC)] + cnt_tbl[which(cnt_tbl$x=="C"),2], tC[length(tC)]))
+      nod$C[i] <- tC[i+1]
+      tE <- c(tE,ifelse(length(cnt_tbl[which(cnt_tbl$x=="E"),2]>0), tE[length(tE)] + cnt_tbl[which(cnt_tbl$x=="E"),2], tE[length(tE)]))
+      nod$E[i] <- tE[i+1]
+      tN <- c(tN,ifelse(length(cnt_tbl[which(cnt_tbl$x=="N"),2]>0), tN[length(tN)] + cnt_tbl[which(cnt_tbl$x=="N"),2], tN[length(tN)]))
+      nod$N[i] <- tN[i+1]
+      tO <- c(tO,ifelse(length(cnt_tbl[which(cnt_tbl$x=="O"),2]>0), tO[length(tO)] + cnt_tbl[which(cnt_tbl$x=="O"),2], tO[length(tO)]))
+      nod$O[i] <- tO[i+1]
+      tNN <- c(tNN,ifelse(length(cnt_tbl[which(cnt_tbl$x=="N.N."),2]>0), tNN[length(tNN)] + cnt_tbl[which(cnt_tbl$x=="N.N."),2], tNN[length(tNN)]))
+      nod$NN[i] <- tNN[i+1]
+      
+    }
+    tA <- as.data.frame(tA)
+    tC <- as.data.frame(tC)
+    tE <- as.data.frame(tE)
+    tN <- as.data.frame(tN)
+    tO <- as.data.frame(tO)
+    tNN <- as.data.frame(tNN)
+    
+    colnames(tA) <- c("vals")
+    tA$rws <- rownames(tA)
+    colnames(tC) <- c("vals")
+    tC$rws <- rownames(tC)
+    colnames(tE) <- c("vals")
+    tE$rws <- rownames(tE)
+    colnames(tN) <- c("vals")
+    tN$rws <- rownames(tN)
+    colnames(tO) <- c("vals")
+    tO$rws <- rownames(tO)
+    colnames(tNN) <- c("vals")
+    tNN$rws <- rownames(tNN)
+    
+    out <- list()
+    out["tA"] <- tA
+    out["tC"] <- tC
+    out["tE"] <- tE
+    out["tN"] <- tN
+    out["tO"] <- tO
+    #out["tNN"] <- tNN
+    
+    dat <- lapply(out, function(x) cbind(x = seq_along(x), y = x))
+    
+    list.names <- names(dat)
+    lns <- sapply(dat, nrow)
+    dat <- as.data.frame(do.call("rbind", dat))
+    dat$group <- rep(list.names, lns)
+    
+    plo <- ggplot(dat, aes(x = x, y = y, colour = group)) +
+      theme_bw() +
+      geom_line(linetype = "dotted") +
+      ggtitle(gsub("\\_links\\.csv","",alllinks[[index]]))
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_node_traits.jpg"),plot=plo,device="jpeg")
+    
+    
+    
+    #traits per node
+    tA<-c(0)
+    tC<-c(0)
+    tE<-c(0)
+    tN<-c(0)
+    tO<-c(0)
+    tNN<-c(0)
+    
+    for(i in 1:nrow(node[[index]])){
+      nodeTraits <- as.data.frame(unlist(str_split(node[[index]][i,2],", ")),stringsAsFactors = F)
+      
+      if(node[[index]][i,2] != ""){
+        colnames(nodeTraits)<-c("words")
+        nodeTraits$trait <- ""
+        nodeTraits[which(nodeTraits$words %in% wordTrait2$Term),2] <- as.character(wordTrait2[which(wordTrait2$Term %in% nodeTraits$words),3])
+        colnames(nodeTraits)<-c("word","trait")
+        nodeTraits$trait[which(nodeTraits$trait=="")] <- "N.N."
+      }
+      
+      cnt_tbl <- plyr::count(nodeTraits$trait)
+      
+      tA <- c(tA,ifelse(length(cnt_tbl[which(cnt_tbl$x=="A"),2]>0), tA[length(tA)] + cnt_tbl[which(cnt_tbl$x=="A"),2], tA[length(tA)]))
+      tC <- c(tC,ifelse(length(cnt_tbl[which(cnt_tbl$x=="C"),2]>0), tC[length(tC)] + cnt_tbl[which(cnt_tbl$x=="C"),2], tC[length(tC)]))
+      tE <- c(tE,ifelse(length(cnt_tbl[which(cnt_tbl$x=="E"),2]>0), tE[length(tE)] + cnt_tbl[which(cnt_tbl$x=="E"),2], tE[length(tE)]))
+      tN <- c(tN,ifelse(length(cnt_tbl[which(cnt_tbl$x=="N"),2]>0), tN[length(tN)] + cnt_tbl[which(cnt_tbl$x=="N"),2], tN[length(tN)]))
+      tO <- c(tO,ifelse(length(cnt_tbl[which(cnt_tbl$x=="O"),2]>0), tO[length(tO)] + cnt_tbl[which(cnt_tbl$x=="O"),2], tO[length(tO)]))
+      tNN <- c(tNN,ifelse(length(cnt_tbl[which(cnt_tbl$x=="N.N."),2]>0), tNN[length(tNN)] + cnt_tbl[which(cnt_tbl$x=="N.N."),2], tNN[length(tNN)]))
+      
+    }
+    tA <- as.data.frame(tA)
+    tC <- as.data.frame(tC)
+    tE <- as.data.frame(tE)
+    tN <- as.data.frame(tN)
+    tO <- as.data.frame(tO)
+    tNN <- as.data.frame(tNN)
+    
+    colnames(tA) <- c("vals")
+    tA$rws <- rownames(tA)
+    colnames(tC) <- c("vals")
+    tC$rws <- rownames(tC)
+    colnames(tE) <- c("vals")
+    tE$rws <- rownames(tE)
+    colnames(tN) <- c("vals")
+    tN$rws <- rownames(tN)
+    colnames(tO) <- c("vals")
+    tO$rws <- rownames(tO)
+    colnames(tNN) <- c("vals")
+    tNN$rws <- rownames(tNN)
+    
+    out <- list()
+    out["tA"] <- tA
+    out["tC"] <- tC
+    out["tE"] <- tE
+    out["tN"] <- tN
+    out["tO"] <- tO
+    #out["tNN"] <- tNN
+    
+    dat <- lapply(out, function(x) cbind(x = seq_along(x), y = x))
+    
+    list.names <- names(dat)
+    lns <- sapply(dat, nrow)
+    dat <- as.data.frame(do.call("rbind", dat))
+    dat$group <- rep(list.names, lns)
+    
+    plo <- ggplot(dat, aes(x = x, y = y, colour = group)) +
+      theme_bw() +
+      geom_line(linetype = "dotted") +
+      ggtitle(gsub("\\_links\\.csv","",alllinks[[index]]))
+    ggplot2::ggsave(paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_node_traits_500.jpg"),plot=plo,device="jpeg")
+    
+    
+    
+    ###MDS on traits
+    
+    if(thresh < 0.1){
+      sent[lower.tri(sent)] <- 0
+      
+      wordTrait <- read.table("../../resources/pda1710_no_abbreviation_loadings_categories.csv",sep=",",header = T)
+      wordTrait$Word<-tolower(wordTrait$Word)
+      
+      #add the max trait variable without loading threshold
+      wordTrait$maxValTrait <- ""
+      wordTrait$thresholdValTrait <- ""
+      for(i in 1:nrow(wordTrait)){
+        wordTrait$maxValTrait[i] <- names(which.max(abs(wordTrait[i,5:9])))
+        wordTrait$thresholdValTrait[i] <- ifelse(length(which(abs(wordTrait[i,5:9])>.25))>0,names(which.max(abs(wordTrait[i,5:9]))),"")
+      }
+      
+      traitCo <- matrix(nrow=5,ncol=5,data = 0)
+      rownames(traitCo)<-c("A","C","E","N","O")
+      colnames(traitCo)<-c("A","C","E","N","O")
+      
+      for(i in 1:nrow(sent)){
+        for(j in 1:nrow(sent)){
+          rowTerm <- as.character(wordTrait$thresholdValTrait[which(wordTrait$Word==rownames(sent)[i])][1])
+          colTerm <- as.character(wordTrait$thresholdValTrait[which(wordTrait$Word==colnames(sent)[j])][1])
+          crossVal <- sent[i,j]
+          if(rowTerm!=colTerm & (!is.na(rowTerm) & !is.na(colTerm)) & (rowTerm != "" & colTerm != "")){
+            traitCo[rowTerm,colTerm] <- traitCo[rowTerm,colTerm] + crossVal
+            traitCo[colTerm,rowTerm] <- traitCo[colTerm,rowTerm] + crossVal
+          }
+        }
+      }
+      
+      tryRes <- tryCatch({
+        corTraitCo <- cor(traitCo)
+        Mydissimilarity_10values_r <- smacof::sim2diss(corTraitCo, method = "rank", to.dist = T)
+        MDS_ordinal_10values_r <- mds(Mydissimilarity_10values_r, type="ordinal")
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_shepard.png"))
+        plot(MDS_ordinal_10values_r, plot.type = "Shepard", main="Ordinal")
+        text(55,.02, paste("Stress =", round(MDS_ordinal_10values_r$stress,2)))
+        dev.off()
+        MDSmod_10values_r <- mds(Mydissimilarity_10values_r, ndim = 2, type = c("ordinal"))
+        MDSmod_10values_r$stress
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank.png"))
+        plot(MDSmod_10values_r, main = "1710 // Rank", xlab = "Dimension 1", ylab = "Dimension 2")
+        dev.off()
+        
+        Mydissimilarity_10values_c <- sim2diss(corTraitCo, method = "corr", to.dist = T)
+        MDS_ordinal_10values_c <- mds(Mydissimilarity_10values_c, type="ordinal")
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_shepard.png"))
+        plot(MDS_ordinal_10values_c, plot.type = "Shepard", main="Ordinal")
+        text(55,.02, paste("Stress =", round(MDS_ordinal_10values_c$stress,2)))
+        dev.off()
+        MDSmod_10values_c <- mds(Mydissimilarity_10values_c, ndim = 2, type = c("ordinal"))
+        MDSmod_10values_c$stress
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr.png"))
+        plot(MDSmod_10values_c, main = "1710 // Correlation", xlab = "Dimension 1", ylab = "Dimension 2")
+        dev.off()
+      }, error = function(error_condition) {})  
+      
+      
+      ###MDS on traits randomized
+      traitCo <- matrix(nrow=5,ncol=5,data = 0)
+      rownames(traitCo)<-c("A","C","E","N","O")
+      colnames(traitCo)<-c("A","C","E","N","O")
+      baseTraits<-c("A","C","E","N","O")
+      traitCounts <- plyr::count(wordTrait$thresholdValTrait)
+      traitCounts <- traitCounts[-which(traitCounts$x==""),]
+      traitProbs <- traitCounts$freq/sum(traitCounts$freq)
+      
+      for(i in 1:nrow(sent)){
+        for(j in 1:nrow(sent)){
+          rowTerm <- sample(baseTraits, 1)
+          colTerm <- sample(baseTraits, 1)
+          crossVal <- sent[i,j]
+          if(rowTerm!=colTerm & (!is.na(rowTerm) & !is.na(colTerm)) & (rowTerm != "-" & colTerm != "-")){
+            traitCo[rowTerm,colTerm] <- traitCo[rowTerm,colTerm] + crossVal
+            traitCo[colTerm,rowTerm] <- traitCo[colTerm,rowTerm] + crossVal
+          }
+        }
+      }
+      
+      tryRes <- tryCatch({
+        corTraitCo <- cor(traitCo)
+        Mydissimilarity_10values_r <- smacof::sim2diss(corTraitCo, method = "rank", to.dist = T)
+        MDS_ordinal_10values_r <- mds(Mydissimilarity_10values_r, type="ordinal")
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_shepard_randomized.png"))
+        plot(MDS_ordinal_10values_r, plot.type = "Shepard", main="Ordinal")
+        text(55,.02, paste("Stress =", round(MDS_ordinal_10values_r$stress,2)))
+        dev.off()
+        MDSmod_10values_r <- mds(Mydissimilarity_10values_r, ndim = 2, type = c("ordinal"))
+        MDSmod_10values_r$stress
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_randomized.png"))
+        plot(MDSmod_10values_r, main = "1710 // Rank", xlab = "Dimension 1", ylab = "Dimension 2")
+        dev.off()
+        
+        Mydissimilarity_10values_c <- sim2diss(corTraitCo, method = "corr", to.dist = T)
+        MDS_ordinal_10values_c <- mds(Mydissimilarity_10values_c, type="ordinal")
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_shepard_randomized.png"))
+        plot(MDS_ordinal_10values_c, plot.type = "Shepard", main="Ordinal")
+        text(55,.02, paste("Stress =", round(MDS_ordinal_10values_c$stress,2)))
+        dev.off()
+        MDSmod_10values_c <- mds(Mydissimilarity_10values_c, ndim = 2, type = c("ordinal"))
+        MDSmod_10values_c$stress
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_randomized.png"))
+        plot(MDSmod_10values_c, main = "1710 // Correlation", xlab = "Dimension 1", ylab = "Dimension 2")
+        dev.off()
+      }, error = function(error_condition) {})
+      
+      for(i in 1:nrow(sent)){
+        for(j in 1:nrow(sent)){
+          rowTerm <- sample(baseTraits, 1,prob = traitProbs)
+          colTerm <- sample(baseTraits, 1,prob = traitProbs)
+          crossVal <- sent[i,j]
+          if(rowTerm!=colTerm & (!is.na(rowTerm) & !is.na(colTerm)) & (rowTerm != "-" & colTerm != "-")){
+            traitCo[rowTerm,colTerm] <- traitCo[rowTerm,colTerm] + crossVal
+            traitCo[colTerm,rowTerm] <- traitCo[colTerm,rowTerm] + crossVal
+          }
+        }
+      }
+      tryRes <- tryCatch({
+        corTraitCo <- cor(traitCo)
+        Mydissimilarity_10values_r <- smacof::sim2diss(corTraitCo, method = "rank", to.dist = T)
+        MDS_ordinal_10values_r <- mds(Mydissimilarity_10values_r, type="ordinal")
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_shepard_randomized_probability.png"))
+        plot(MDS_ordinal_10values_r, plot.type = "Shepard", main="Ordinal")
+        text(55,.02, paste("Stress =", round(MDS_ordinal_10values_r$stress,2)))
+        dev.off()
+        MDSmod_10values_r <- mds(Mydissimilarity_10values_r, ndim = 2, type = c("ordinal"))
+        MDSmod_10values_r$stress
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_rank_randomized_probability.png"))
+        plot(MDSmod_10values_r, main = "1710 // Rank", xlab = "Dimension 1", ylab = "Dimension 2")
+        dev.off()
+        
+        Mydissimilarity_10values_c <- sim2diss(corTraitCo, method = "corr", to.dist = T)
+        MDS_ordinal_10values_c <- mds(Mydissimilarity_10values_c, type="ordinal")
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_shepard_randomized_probability.png"))
+        plot(MDS_ordinal_10values_c, plot.type = "Shepard", main="Ordinal")
+        text(55,.02, paste("Stress =", round(MDS_ordinal_10values_c$stress,2)))
+        dev.off()
+        MDSmod_10values_c <- mds(Mydissimilarity_10values_c, ndim = 2, type = c("ordinal"))
+        MDSmod_10values_c$stress
+        png(filename=paste0(thresh,"/",gsub("\\_links\\.csv","",alllinks[[index]]),"_MDS_traits_corr_randomized_probability.png"))
+        plot(MDSmod_10values_c, main = "1710 // Correlation", xlab = "Dimension 1", ylab = "Dimension 2")
+        dev.off()
+      }, error = function(error_condition) {})
+    }
+  }
+}
+
+####
+####
+#### trait conversion of co-occurrence matrix
+
+
+setwd("/Users/mlr/OneDrive - Victoria University of Wellington - STAFF/Git/tic-personality-words/outputs save/pda1710-1000words-advs-lemma-book-centric/")
+
+## Creating a list with all co-ocurrence matrices for all outputs
+allmatrices <- list.files(paste0("."),
+                          pattern = "(.*)_network_matrix.csv",
+                          full.names = T)
+
+alllinks <- list.files(paste0("."),
+                       pattern = "(.*)_links.csv",
+                       full.names = T)
+
+allnodes <- list.files(paste0("."),
+                       pattern = "(.*)_nodes.csv",
+                       full.names = T)
+
+## Fetching the data of the co-ocurrence matrices
+cooc <- lapply(allmatrices, function(x) read.table(x, header = T, check.names = F))
+link <- lapply(alllinks, function(x) read.table(x, header = T, check.names = F,
+                                                stringsAsFactors = F))
+node <- lapply(allnodes, function(x) read.table(x, header = T, check.names = F,
+                                                stringsAsFactors = F))
+
+for(bb in 1:length(cooc)){
+  rownames(cooc[[bb]]) <- cooc[[bb]][,1]
+  cooc[[bb]][,1] <- NULL
+}
+
+cooc[[1]][lower.tri(cooc[[1]])] <- 0
+
+wordTrait <- read.table("../../resources/pda1710_no_abbreviation_loadings_categories.csv",sep=",",header = T)
+wordTrait$Word<-tolower(wordTrait$Word)
+
+#add the max trait variable without loading threshold
+wordTrait$maxValTrait <- ""
+wordTrait$thresholdValTrait <- ""
+for(i in 1:nrow(wordTrait)){
+  wordTrait$maxValTrait[i] <- names(which.max(abs(wordTrait[i,5:9])))
+  wordTrait$thresholdValTrait[i] <- ifelse(length(which(abs(wordTrait[i,5:9])>.25))>0,names(which.max(abs(wordTrait[i,5:9]))),"")
+}
+
+traitCo <- matrix(nrow=5,ncol=5,data = 0)
+rownames(traitCo)<-c("A","C","E","N","O")
+colnames(traitCo)<-c("A","C","E","N","O")
+
+for(i in 1:nrow(cooc[[1]])){
+  for(j in 1:nrow(cooc[[1]])){
+    rowTerm <- wordTrait$thresholdValTrait[which(wordTrait$Word==rownames(cooc[[1]])[i])][1]
+    colTerm <- wordTrait$thresholdValTrait[which(wordTrait$Word==colnames(cooc[[1]])[j])][1]
+    crossVal <- cooc[[1]][i,j]
+    if(rowTerm!=colTerm & (!is.na(rowTerm) & !is.na(colTerm)) & (rowTerm != "" & colTerm != "")){
+      traitCo[rowTerm,colTerm] <- traitCo[rowTerm,colTerm] + crossVal
+      traitCo[colTerm,rowTerm] <- traitCo[colTerm,rowTerm] + crossVal
+    }
+  }
+}
+corTraitCo <- cor(traitCo)
+Mydissimilarity_10values_r <- smacof::sim2diss(corTraitCo, method = "rank", to.dist = T)
+MDS_ordinal_10values_r <- mds(Mydissimilarity_10values_r, type="ordinal")
+plot(MDS_ordinal_10values_r, plot.type = "Shepard", main="Ordinal")
+text(55,.02, paste("Stress =", round(MDS_ordinal_10values_r$stress,2)))
+MDSmod_10values_r <- mds(Mydissimilarity_10values_r, ndim = 2, type = c("ordinal"))
+MDSmod_10values_r$stress
+plot(MDSmod_10values_r, main = "COCA: MDS 10 values // Rank", xlab = "Dimension 1", ylab = "Dimension 2")
+
+
+Mydissimilarity_10values_c <- sim2diss(corTraitCo, method = "corr", to.dist = T)
+MDS_ordinal_10values_c <- mds(Mydissimilarity_10values_c, type="ordinal")
+plot(MDS_ordinal_10values_c, plot.type = "Shepard", main="Ordinal")
+text(55,.02, paste("Stress =", round(MDS_ordinal_10values_c$stress,2)))
+MDSmod_10values_c <- mds(Mydissimilarity_10values_c, ndim = 2, type = c("ordinal"))
+MDSmod_10values_c$stress
+plot(MDSmod_10values_c, main = "COCA: MDS 10 values // Correlation", xlab = "Dimension 1", ylab = "Dimension 2")
+
+
